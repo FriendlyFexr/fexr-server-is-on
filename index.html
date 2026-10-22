@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GLOBAL DECISION MATRIX // LIVE MONITOR</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            mono: ['Share Tech Mono', 'monospace'],
+            retro: ['"Press Start 2P"', 'cursive'],
+          },
+          animation: {
+            'scanline': 'scanline 8s linear infinite',
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'glitch': 'glitch 1s infinite',
+            'float': 'float 6s ease-in-out infinite',
+          },
+          keyframes: {
+            scanline: {
+              '0%': { transform: 'translateY(-100%)' },
+              '100%': { transform: 'translateY(1000%)' }
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+              '50%': { transform: 'translateY(-15px) rotate(1deg)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom CRT Scanline Effect & Glow Utility Classes */
+    .scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 0, 0, 0.4) 50%,
+        rgba(0, 0, 0, 0.4)
+      );
+      background-size: 100% 4px;
+    }
+
+    .cyber-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(0, 255, 200, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 255, 200, 0.05) 1px, transparent 1px);
+    }
+
+    /* Dynamic Neon Text Shadows */
+    .neon-glow-yes {
+      text-shadow: 
+        0 0 10px rgba(16, 185, 129, 0.8),
+        0 0 30px rgba(16, 185, 129, 0.6),
+        0 0 60px rgba(16, 185, 129, 0.4),
+        0 0 100px rgba(6, 182, 212, 0.8);
+    }
+
+    .neon-glow-no {
+      text-shadow: 
+        0 0 10px rgba(239, 68, 68, 0.8),
+        0 0 30px rgba(239, 68, 68, 0.6),
+        0 0 60px rgba(239, 68, 68, 0.4),
+        0 0 100px rgba(217, 70, 239, 0.8);
+    }
+
+    .box-glow-yes {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.35), inset 0 0 15px rgba(16, 185, 129, 0.2);
+    }
+
+    .box-glow-no {
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.35), inset 0 0 15px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Cyber Corner Decorators */
+    .cyber-corner-tl {
+      clip-path: polygon(0 0, 100% 0, 100% 10px, 10px 10px, 10px 100%, 0 100%);
+    }
+    .cyber-corner-br {
+      clip-path: polygon(100% 100%, 0 100%, 0 calc(100% - 10px), calc(100% - 10px) calc(100% - 10px), calc(100% - 10px) 0, 100% 0);
+    }
+
+    /* Glassmorphism Modal */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020617;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #06b6d4;
+    }
+  </style>
+</head>
+
+<body class="h-full w-full overflow-hidden font-mono text-slate-100 bg-slate-950 select-none relative">
+
+  <!-- Background Particle Canvas -->
+  <canvas id="particleCanvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
+
+  <!-- Cyberpunk Background Grid Overlay -->
+  <div class="absolute inset-0 cyber-grid z-0 pointer-events-none"></div>
+
+  <!-- CRT Scanline Screen Overlay -->
+  <div class="absolute inset-0 scanlines z-10 pointer-events-none opacity-40"></div>
+  <div class="absolute inset-0 pointer-events-none z-10 bg-gradient-to-b from-cyan-500/5 via-transparent to-purple-500/5 animate-scanline"></div>
+
+  <!-- Main Display Container -->
+  <div class="relative z-20 flex flex-col justify-between h-full max-w-7xl mx-auto px-4 py-6 md:p-8">
+    
+    <!-- TOP BAR: System Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-4 bg-slate-900/40 backdrop-blur-md px-6 py-4 rounded-xl border-t border-slate-800/80">
+      <div class="flex items-center gap-3">
+        <div id="statusDot" class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
+        <div>
+          <h1 class="font-orbitron font-extrabold text-lg md:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400 flex items-center gap-2">
+            <i class="fa-solid fa-microchip text-cyan-400"></i> OMNI-STATE MATRIX
+          </h1>
+          <p class="text-xs text-slate-400 tracking-widest uppercase">GLOBAL REALTIME SYNCHRONIZER v4.09</p>
+        </div>
+      </div>
+
+      <!-- Network Stats & Key Sequence Tracker -->
+      <div class="flex items-center gap-6 text-xs">
+        <div class="bg-slate-950/80 px-3 py-1.5 rounded border border-slate-800 flex items-center gap-2">
+          <span class="text-slate-500">PING:</span>
+          <span id="pingDisplay" class="text-cyan-400 font-bold">24 ms</span>
+        </div>
+        
+        <!-- HIDDEN BY DEFAULT: Passcode feedback indicator appears only when digits are typed -->
+        <div id="keyFeedbackWrapper" class="hidden bg-slate-950/80 px-3 py-1.5 rounded border border-slate-800/80 flex items-center gap-2 transition-all duration-300">
+          <span class="text-slate-500">OVERRIDE CODE:</span>
+          <div id="keyFeedback" class="flex gap-1">
+            <span class="w-2 h-2 rounded-full bg-slate-800"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-800"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-800"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-800"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-800"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-800"></span>
+          </div>
+        </div>
+
+        <!-- HIDDEN BY DEFAULT: Admin button appears only after entering secret passcode -->
+        <button id="openAdminBtn" onclick="toggleAdminModal(true)" class="hidden items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition border border-slate-700 hover:border-cyan-500">
+          <i class="fa-solid fa-lock text-xs"></i> ADMIN PANEL
+        </button>
+      </div>
+    </header>
+
+    <!-- CENTER DISPLAY: Massive ONLINE or OFFLINE -->
+    <main class="flex-1 flex flex-col items-center justify-center my-6 relative animate-float">
+      <!-- Outer Framing Badges -->
+      <div id="statusBadge" class="mb-4 px-6 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/30 text-emerald-400 font-orbitron text-xs md:text-sm tracking-widest uppercase flex items-center gap-2 box-glow-yes transition-all duration-500">
+        <i class="fa-solid fa-globe animate-spin" style="animation-duration: 10s;"></i> GLOBAL CONSENSUS VERIFIED
+      </div>
+
+      <!-- Giant Animated Text Holder -->
+      <div class="relative py-8 px-12 text-center">
+        <!-- Background Ambient Ring -->
+        <div id="ambientRing" class="absolute inset-0 rounded-full blur-3xl opacity-20 bg-emerald-500 transition-all duration-700"></div>
+        
+        <!-- Main Massive Text -->
+        <div id="stateDisplay" class="font-orbitron font-black text-6xl sm:text-8xl md:text-[11rem] lg:text-[14rem] leading-none tracking-tight transition-all duration-500 text-emerald-400 neon-glow-yes select-none transform hover:scale-105">
+          ONLINE
+        </div>
+      </div>
+
+      <!-- Last Updated Timestamp -->
+      <div class="mt-4 text-slate-400 text-xs md:text-sm flex items-center gap-3 bg-slate-900/60 px-4 py-2 rounded-lg border border-slate-800/80">
+        <i class="fa-solid fa-clock text-cyan-400"></i>
+        <span>LAST GLOBAL CHANGE: <span id="lastUpdated" class="text-slate-200 font-bold">SYNCHRONIZING...</span></span>
+      </div>
+    </main>
+
+    <!-- BOTTOM DECORATIVE FOOTER & METRICS -->
+    <footer class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800/80">
+      <div class="bg-slate-900/40 backdrop-blur-md p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-shield-halved text-cyan-400 text-lg"></i>
+          <div>
+            <div class="text-xs text-slate-400">SECURITY LAYER</div>
+            <div class="text-sm font-bold text-slate-200">PASSCODE LOCKED</div>
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 font-mono">CODE: [191012]</div>
+      </div>
+
+      <div class="bg-slate-900/40 backdrop-blur-md p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-network-wired text-purple-400 text-lg"></i>
+          <div>
+            <div class="text-xs text-slate-400">DATABASE REALTIME BUS</div>
+            <div id="dbStatus" class="text-sm font-bold text-emerald-400">LIVE SYNC ACTIVE</div>
+          </div>
+        </div>
+        <div class="flex gap-1">
+          <div class="w-1.5 h-4 bg-emerald-500 rounded-full animate-pulse"></div>
+          <div class="w-1.5 h-4 bg-emerald-500 rounded-full animate-pulse delay-100"></div>
+          <div class="w-1.5 h-4 bg-emerald-500 rounded-full animate-pulse delay-200"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/40 backdrop-blur-md p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-terminal text-amber-400 text-lg"></i>
+          <div>
+            <div class="text-xs text-slate-400">OVERRIDE ACCESS</div>
+            <div class="text-sm font-bold text-slate-200">TYPE 1-9-1-0-1-2</div>
+          </div>
+        </div>
+        <button id="mobileUnlockBtn" onclick="toggleAdminModal(true)" class="hidden text-xs bg-slate-800 px-3 py-1 rounded text-cyan-400 border border-slate-700">
+          UNLOCK
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- SECRET OVERRIDE ADMIN MODAL -->
+  <div id="adminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-opacity duration-300 opacity-0">
+    <div class="glass-panel border-2 border-cyan-500/50 rounded-2xl max-w-lg w-full p-6 md:p-8 relative shadow-2xl overflow-hidden box-glow-yes">
+      
+      <!-- Modal Accent Lines -->
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-emerald-500 to-purple-500"></div>
+      
+      <!-- Close Button -->
+      <button onclick="toggleAdminModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800/60 p-2 rounded-full border border-slate-700 transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-3 bg-cyan-950/60 rounded-xl border border-cyan-500/40 text-cyan-400">
+          <i class="fa-solid fa-sliders text-xl"></i>
+        </div>
+        <div>
+          <h2 class="font-orbitron font-extrabold text-xl text-white">GLOBAL OVERRIDE PANEL</h2>
+          <p class="text-xs text-slate-400">SECRET ACCESS GRANTED // ID: 191012</p>
+        </div>
+      </div>
+
+      <!-- Current State Monitor inside modal -->
+      <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 mb-6 flex items-center justify-between">
+        <span class="text-xs text-slate-400">CURRENT ACTIVE STATE:</span>
+        <span id="modalCurrentState" class="font-orbitron font-bold text-lg text-emerald-400 flex items-center gap-2">
+          <i class="fa-solid fa-circle text-xs animate-pulse"></i> ONLINE
+        </span>
+      </div>
+
+      <!-- Control Buttons Grid -->
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- ONLINE Button -->
+        <button onclick="setGlobalState('ONLINE')" class="group relative overflow-hidden p-6 rounded-xl border-2 border-emerald-500/60 bg-emerald-950/20 hover:bg-emerald-900/40 text-emerald-400 font-orbitron font-extrabold text-xl md:text-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex flex-col items-center justify-center gap-2 box-glow-yes">
+          <i class="fa-solid fa-power-off text-3xl group-hover:scale-110 transition-transform"></i>
+          SET ONLINE
+        </button>
+
+        <!-- OFFLINE Button -->
+        <button onclick="setGlobalState('OFFLINE')" class="group relative overflow-hidden p-6 rounded-xl border-2 border-rose-500/60 bg-rose-950/20 hover:bg-rose-900/40 text-rose-400 font-orbitron font-extrabold text-xl md:text-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex flex-col items-center justify-center gap-2 box-glow-no">
+          <i class="fa-solid fa-toggle-off text-3xl group-hover:scale-110 transition-transform"></i>
+          SET OFFLINE
+        </button>
+      </div>
+
+      <!-- Footer Info / Hint -->
+      <div class="text-center text-xs text-slate-500 border-t border-slate-800/80 pt-4">
+        Press <kbd class="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700">ESC</kbd> to close panel. State updates immediately across all live clients.
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Scripts (Modular Version via CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Application Environment Context
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'global-status-matrix';
+    
+    // Default fallback firebase config if environment doesn't inject one
+    const firebaseConfig = typeof __firebase_config !== 'undefined' 
+      ? JSON.parse(__firebase_config) 
+      : {
+          apiKey: "AIzaSyDemoConfigForGitHubPagesHostingOnly",
+          authDomain: "demo-project.firebaseapp.com",
+          projectId: "demo-project",
+          storageBucket: "demo-project.appspot.com",
+          messagingSenderId: "123456789",
+          appId: "1:123456789:web:demo"
+        };
+
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+
+    // Local State Fallback (if offline or database error)
+    let localGlobalState = {
+      state: 'ONLINE',
+      updatedAt: new Date().toISOString()
+    };
+
+    async function initFirebase() {
+      try {
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        // Handle Auth
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            currentUser = user;
+            console.log("Authenticated User ID:", user.uid);
+            setupRealtimeListener();
+          }
+        });
+
+      } catch (err) {
+        console.warn("Firebase initialized with local fallback mode:", err);
+        updateUI('ONLINE', new Date().toISOString());
+        document.getElementById('dbStatus').textContent = 'LOCAL MOCK BUS';
+        document.getElementById('dbStatus').className = 'text-sm font-bold text-amber-400';
+      }
+    }
+
+    // Realtime Listener
+    function setupRealtimeListener() {
+      if (!db) return;
+      
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'current');
+      
+      onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && data.state) {
+            // Map legacy state names if present
+            let mappedState = data.state;
+            if (mappedState === 'YES') mappedState = 'ONLINE';
+            if (mappedState === 'NO') mappedState = 'OFFLINE';
+            updateUI(mappedState, data.updatedAt);
+          }
+        } else {
+          // Initialize state if not present
+          setGlobalState('ONLINE');
+        }
+      }, (error) => {
+        console.error("Firestore Listener Error:", error);
+      });
+    }
+
+    // Function to push state update
+    window.setGlobalState = async function(newState) {
+      const timestamp = new Date().toISOString();
+      
+      // Update locally immediately for responsiveness
+      updateUI(newState, timestamp);
+
+      if (db && currentUser) {
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'current');
+          await setDoc(docRef, {
+            state: newState,
+            updatedAt: timestamp,
+            updatedBy: currentUser.uid
+          });
+        } catch (err) {
+          console.error("Failed to write state to Firestore:", err);
+        }
+      } else {
+        // Fallback for standalone HTML execution
+        localGlobalState.state = newState;
+        localGlobalState.updatedAt = timestamp;
+      }
+
+      // Close modal after selection
+      toggleAdminModal(false);
+    };
+
+    initFirebase();
+  </script>
+
+  <!-- Canvas Engine & UI Logic -->
+  <script>
+    // Audio FX using Web Audio API (Synthesized Cyber Sounds)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBeep(freq = 440, duration = 0.08, type = 'sine') {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playUnlockSound() {
+      playBeep(523.25, 0.1, 'square');
+      setTimeout(() => playBeep(659.25, 0.1, 'square'), 100);
+      setTimeout(() => playBeep(783.99, 0.2, 'triangle'), 200);
+    }
+
+    function playClearSound() {
+      playBeep(220, 0.08, 'sawtooth');
+      setTimeout(() => playBeep(180, 0.08, 'sawtooth'), 60);
+    }
+
+    // UI Update Handler
+    function updateUI(state, updatedAt) {
+      const stateDisplay = document.getElementById('stateDisplay');
+      const statusBadge = document.getElementById('statusBadge');
+      const ambientRing = document.getElementById('ambientRing');
+      const lastUpdated = document.getElementById('lastUpdated');
+      const modalCurrentState = document.getElementById('modalCurrentState');
+
+      stateDisplay.textContent = state;
+
+      if (updatedAt) {
+        const dateObj = new Date(updatedAt);
+        lastUpdated.textContent = dateObj.toLocaleTimeString() + ' (' + dateObj.toLocaleDateString() + ')';
+      }
+
+      if (state === 'ONLINE') {
+        stateDisplay.className = 'font-orbitron font-black text-6xl sm:text-8xl md:text-[11rem] lg:text-[14rem] leading-none tracking-tight transition-all duration-500 text-emerald-400 neon-glow-yes select-none transform hover:scale-105';
+        statusBadge.className = 'mb-4 px-6 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/30 text-emerald-400 font-orbitron text-xs md:text-sm tracking-widest uppercase flex items-center gap-2 box-glow-yes transition-all duration-500';
+        statusBadge.innerHTML = '<i class="fa-solid fa-globe animate-spin" style="animation-duration: 10s;"></i> GLOBAL CONSENSUS: ACTIVE ONLINE';
+        ambientRing.className = 'absolute inset-0 rounded-full blur-3xl opacity-20 bg-emerald-500 transition-all duration-700';
+        modalCurrentState.className = 'font-orbitron font-bold text-lg text-emerald-400 flex items-center gap-2';
+        modalCurrentState.innerHTML = '<i class="fa-solid fa-circle text-xs animate-pulse"></i> ONLINE';
+        targetParticleHue = 150; // Emerald Green
+      } else {
+        stateDisplay.className = 'font-orbitron font-black text-6xl sm:text-8xl md:text-[11rem] lg:text-[14rem] leading-none tracking-tight transition-all duration-500 text-rose-500 neon-glow-no select-none transform hover:scale-105';
+        statusBadge.className = 'mb-4 px-6 py-1.5 rounded-full border border-rose-500/40 bg-rose-950/30 text-rose-400 font-orbitron text-xs md:text-sm tracking-widest uppercase flex items-center gap-2 box-glow-no transition-all duration-500';
+        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation animate-bounce"></i> GLOBAL CONSENSUS: ACTIVE OFFLINE';
+        ambientRing.className = 'absolute inset-0 rounded-full blur-3xl opacity-20 bg-rose-500 transition-all duration-700';
+        modalCurrentState.className = 'font-orbitron font-bold text-lg text-rose-400 flex items-center gap-2';
+        modalCurrentState.innerHTML = '<i class="fa-solid fa-circle text-xs animate-pulse"></i> OFFLINE';
+        targetParticleHue = 345; // Crimson Red
+      }
+    }
+
+    // Secret Key Code Detection: "191012"
+    const SECRET_CODE = ['1', '9', '1', '0', '1', '2'];
+    let keyBuffer = [];
+
+    document.addEventListener('keydown', (e) => {
+      // Handle Modal Esc key
+      if (e.key === 'Escape') {
+        toggleAdminModal(false);
+        return;
+      }
+
+      // Handle Backspace or Delete to completely clear buffer and hide indicator
+      if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Del') {
+        if (keyBuffer.length > 0) {
+          keyBuffer = [];
+          playClearSound();
+          updateKeyFeedbackUI();
+        }
+        return;
+      }
+
+      // Check numeric keypresses
+      if (['0','1','2','3','4','5','6','7','8','9'].includes(e.key)) {
+        keyBuffer.push(e.key);
+        if (keyBuffer.length > SECRET_CODE.length) {
+          keyBuffer.shift();
+        }
+
+        playBeep(300 + keyBuffer.length * 50, 0.05, 'sine');
+        updateKeyFeedbackUI();
+
+        // Validate code match
+        if (JSON.stringify(keyBuffer) === JSON.stringify(SECRET_CODE)) {
+          playUnlockSound();
+          
+          // Reveal Admin Buttons on Header & Mobile Footer
+          const openAdminBtn = document.getElementById('openAdminBtn');
+          const mobileUnlockBtn = document.getElementById('mobileUnlockBtn');
+          if (openAdminBtn) {
+            openAdminBtn.classList.remove('hidden');
+            openAdminBtn.classList.add('flex');
+          }
+          if (mobileUnlockBtn) {
+            mobileUnlockBtn.classList.remove('hidden');
+          }
+
+          toggleAdminModal(true);
+          keyBuffer = [];
+          updateKeyFeedbackUI();
+        }
+      }
+    });
+
+    function updateKeyFeedbackUI() {
+      const feedbackWrapper = document.getElementById('keyFeedbackWrapper');
+      const container = document.getElementById('keyFeedback');
+      
+      // Completely hide indicator if buffer is empty
+      if (keyBuffer.length === 0) {
+        feedbackWrapper.classList.add('hidden');
+        return;
+      }
+
+      // Show indicator as soon as user types first digit
+      feedbackWrapper.classList.remove('hidden');
+
+      const dots = container.children;
+      for (let i = 0; i < SECRET_CODE.length; i++) {
+        if (i < keyBuffer.length) {
+          dots[i].className = 'w-2 h-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400';
+        } else {
+          dots[i].className = 'w-2 h-2 rounded-full bg-slate-800';
+        }
+      }
+    }
+
+    // Modal Control
+    function toggleAdminModal(show) {
+      const modal = document.getElementById('adminModal');
+      if (show) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.remove('opacity-0');
+        }, 10);
+      } else {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 300);
+      }
+    }
+
+    // Simulated Network Latency Ping Timer
+    setInterval(() => {
+      const ping = Math.floor(Math.random() * 15) + 18;
+      document.getElementById('pingDisplay').textContent = `${ping} ms`;
+    }, 3000);
+
+    // =========================================================================
+    // CANVAS PARTICLE SYSTEM ENGINE
+    // =========================================================================
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let particles = [];
+    let currentHue = 150;
+    let targetParticleHue = 150;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = (Math.random() - 0.5) * 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.5 - 0.2;
+        this.alpha = Math.random() * 0.6 + 0.2;
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+
+        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+          this.reset();
+        }
+      }
+
+      draw() {
+        ctx.fillStyle = `hsla(${currentHue}, 80%, 60%, ${this.alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Initialize 80 particles
+    for (let i = 0; i < 80; i++) {
+      particles.push(new Particle());
+    }
+
+    function animateParticles() {
+      currentHue += (targetParticleHue - currentHue) * 0.05;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 120) {
+            ctx.strokeStyle = `hsla(${currentHue}, 70%, 50%, ${0.15 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      requestAnimationFrame(animateParticles);
+    }
+
+    window.onload = function() {
+      animateParticles();
+    };
+  </script>
+</body>
+</html>
