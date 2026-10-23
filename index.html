@@ -163,7 +163,7 @@
         <div class="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-slate-500"></div>
 
         <div class="text-xs md:text-sm font-orbitron tracking-[0.3em] text-slate-400 uppercase mb-4 flex items-center gap-2">
-          <i class="fa-solid fa-globe animate-spin-slow text-slate-500"></i> SYSTEM STATE
+          <i class="fa-solid fa-globe animate-spin-slow text-slate-500"></i> DATABASE STATUS
         </div>
 
         <!-- MAIN GLOBAL STATUS TEXT (ONLINE / OFFLINE) -->
@@ -174,15 +174,9 @@
         <!-- Dynamic Subtext Badge -->
         <div id="statusBadge" class="mt-6 px-6 py-2 rounded-full font-orbitron font-bold text-xs md:text-sm uppercase tracking-widest border transition-all duration-500 flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-          <span>CONNECTING TO DATABASE</span>
+          <span>FETCHING FROM DATABASE...</span>
         </div>
 
-      </div>
-
-      <!-- Secret passcode hint -->
-      <div class="mt-8 text-xs text-slate-500 font-mono tracking-wider flex items-center gap-2">
-        <i class="fa-solid fa-key text-slate-600"></i>
-        <span>Type secret passcode directly on keyboard to access control panel.</span>
       </div>
 
     </main>
@@ -214,13 +208,13 @@
           <i class="fa-solid fa-user-shield text-2xl"></i>
         </div>
         <div>
-          <h2 class="font-orbitron font-bold text-lg text-white">OVERRIDE CONTROL</h2>
-          <p class="text-xs text-slate-400">GLOBAL BROADCAST CONTROLLER</p>
+          <h2 class="font-orbitron font-bold text-lg text-white">DATABASE OVERRIDE CONSOLE</h2>
+          <p class="text-xs text-slate-400">AUTHORIZED ACCESS GRANTED</p>
         </div>
       </div>
 
       <p class="text-sm text-slate-300 mb-6 font-mono">
-        Select state to push globally to all connected clients instantly:
+        Select state to write over database:
       </p>
 
       <!-- ONLINE / OFFLINE STATE BUTTONS -->
@@ -401,35 +395,53 @@
 
       if (statusBadge) {
         statusBadge.className = `mt-6 px-6 py-2 rounded-full font-orbitron font-bold text-xs md:text-sm uppercase tracking-widest border transition-all duration-500 flex items-center gap-2 ${
-          isOnline
-            ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
-            : 'bg-rose-950/80 border-rose-500/60 text-rose-300'
+          isOnline 
+            ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-400' 
+            : 'bg-rose-950/60 border-rose-500/50 text-rose-400'
         }`;
         statusBadge.innerHTML = `
-          <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-rose-500 animate-pulse'}"></span>
-          <span>SYSTEM SIGNAL STATUS: ${state}</span>
+          <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}"></span>
+          <span>SYSTEM MODE: ${state}</span>
         `;
       }
 
       if (lastUpdated) {
-        if (timestamp) {
-          const date = new Date(timestamp);
-          lastUpdated.innerText = date.toLocaleTimeString();
+        if (!timestamp) {
+          lastUpdated.innerText = "NEVER";
         } else {
-          lastUpdated.innerText = 'NEVER';
+          try {
+            const date = new Date(timestamp);
+            lastUpdated.innerText = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          } catch (e) {
+            lastUpdated.innerText = "JUST NOW";
+          }
         }
       }
     }
 
-    // Local State Fallback
+    // Local State & Fallback Engine
     let localGlobalState = {
-      state: 'ONLINE',
-      updatedAt: null
+      state: localStorage.getItem('global_status_state') || 'ONLINE',
+      updatedAt: localStorage.getItem('global_status_updated') || null
     };
 
     let isInitialLoad = true;
     let currentGlobalStateVal = null;
     let currentUser = null;
+
+    // Cross-tab Synchronization Channel (for local/offline sync across windows)
+    const syncChannel = new BroadcastChannel('global_status_monitor_sync');
+    syncChannel.onmessage = (event) => {
+      if (event.data && event.data.state) {
+        const { state, updatedAt } = event.data;
+        if (!isInitialLoad && currentGlobalStateVal !== state) {
+          showStatusToast(state);
+        }
+        currentGlobalStateVal = state;
+        isInitialLoad = false;
+        updateUI(state, updatedAt);
+      }
+    };
 
     async function initFirebase() {
       if (typeof window.db !== 'undefined' && typeof window.auth !== 'undefined') {
@@ -438,15 +450,15 @@
           currentUser = userCredential.user;
           setupRealtimeListener();
         } catch (err) {
-          console.warn("Auth initialization failed, using local mode:", err);
-          updateUI(localGlobalState.state, localGlobalState.updatedAt);
+          console.warn("Auth initialization failed, setting up listener without auth token:", err);
+          setupRealtimeListener();
         }
       } else {
         updateUI(localGlobalState.state, localGlobalState.updatedAt);
       }
     }
 
-    // Realtime Listener
+    // Realtime Listener across all connected devices and Firebase console changes
     function setupRealtimeListener() {
       if (typeof window.db === 'undefined' || !window.db) return;
       
@@ -456,10 +468,10 @@
       window.onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data && data.state) {
-            let mappedState = data.state;
-            if (mappedState === 'YES') mappedState = 'ONLINE';
-            if (mappedState === 'NO') mappedState = 'OFFLINE';
+          if (data && data.state !== undefined) {
+            let mappedState = String(data.state).toUpperCase().trim();
+            if (mappedState === 'YES' || mappedState === 'TRUE' || mappedState === 'ON') mappedState = 'ONLINE';
+            if (mappedState === 'NO' || mappedState === 'FALSE' || mappedState === 'OFF') mappedState = 'OFFLINE';
 
             // Show toast & chime if state changes during an active session
             if (!isInitialLoad && currentGlobalStateVal !== mappedState) {
@@ -468,40 +480,44 @@
 
             currentGlobalStateVal = mappedState;
             isInitialLoad = false;
-            updateUI(mappedState, data.updatedAt);
+            updateUI(mappedState, data.updatedAt || null);
           }
         } else {
-          // Initialize state if not present
+          // Initialize document if absent in Firestore
           setGlobalState('ONLINE');
         }
       }, (error) => {
-        console.error("Firestore Listener Error:", error);
+        console.error("Firestore Listener Error (Check Firebase Console Security Rules):", error);
+        updateUI(localGlobalState.state, localGlobalState.updatedAt);
       });
     }
 
-    // Function to push state update
+    // Function to push state update to Firebase
     window.setGlobalState = async function(newState) {
       const timestamp = new Date().toISOString();
 
-      if (typeof window.db !== 'undefined' && window.db && currentUser) {
+      if (typeof window.db !== 'undefined' && window.db) {
         try {
           const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'globalState', 'current');
           await window.setDoc(docRef, {
             state: newState,
             updatedAt: timestamp,
-            updatedBy: currentUser.uid
-          });
+            updatedBy: currentUser ? currentUser.uid : 'console-override'
+          }, { merge: true });
         } catch (err) {
           console.error("Failed to write state to Firestore:", err);
         }
       } else {
-        // Fallback for standalone HTML execution
+        // Fallback for offline mode
         if (currentGlobalStateVal !== newState) {
           showStatusToast(newState);
         }
         currentGlobalStateVal = newState;
         localGlobalState.state = newState;
         localGlobalState.updatedAt = timestamp;
+        localStorage.setItem('global_status_state', newState);
+        localStorage.setItem('global_status_updated', timestamp);
+        syncChannel.postMessage({ state: newState, updatedAt: timestamp });
         updateUI(newState, timestamp);
       }
 
