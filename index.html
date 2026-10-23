@@ -72,12 +72,21 @@
   <!-- Firebase SDK Imports -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Setup global variables for window access
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'global-status-app';
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    // User's Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBsrkvqEERq6_jSi78WPWjMquJxaniSFdc",
+      authDomain: "server-is-on.firebaseapp.com",
+      projectId: "server-is-on",
+      storageBucket: "server-is-on.firebasestorage.app",
+      messagingSenderId: "381870351987",
+      appId: "1:381870351987:web:ccf0bbb5af91aa3db56c06",
+      measurementId: "G-BZQNVZB4VL"
+    };
+
+    const appId = 'server-is-on-app';
 
     if (firebaseConfig) {
       window.app = initializeApp(firebaseConfig);
@@ -87,7 +96,6 @@
 
     window.appId = appId;
     window.signInAnonymously = signInAnonymously;
-    window.signInWithCustomToken = signInWithCustomToken;
     window.doc = doc;
     window.setDoc = setDoc;
     window.onSnapshot = onSnapshot;
@@ -137,7 +145,7 @@
 
         <div class="text-right">
           <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">LAST UPDATE</div>
-          <div id="lastUpdated" class="text-xs font-mono text-cyan-400 font-semibold">CONNECTING...</div>
+          <div id="lastUpdated" class="text-xs font-mono text-cyan-400 font-semibold">NEVER</div>
         </div>
       </div>
     </header>
@@ -215,7 +223,7 @@
         Select state to push globally to all connected clients instantly:
       </p>
 
-      <!-- YES / NO STATE BUTTONS -->
+      <!-- ONLINE / OFFLINE STATE BUTTONS -->
       <div class="grid grid-cols-2 gap-4 mb-6">
         <button onclick="setGlobalState('ONLINE')" class="group relative overflow-hidden p-5 rounded-xl border-2 border-emerald-500/50 bg-emerald-950/30 hover:bg-emerald-600 hover:border-emerald-400 text-emerald-400 hover:text-white transition-all duration-300 font-orbitron font-black text-xl shadow-lg flex flex-col items-center justify-center gap-2">
           <i class="fa-solid fa-bolt text-2xl group-hover:scale-125 transition-transform duration-300"></i>
@@ -413,7 +421,7 @@
       }
     }
 
-    // Local State Fallback (if offline or database error)
+    // Local State Fallback
     let localGlobalState = {
       state: 'ONLINE',
       updatedAt: null
@@ -421,18 +429,13 @@
 
     let isInitialLoad = true;
     let currentGlobalStateVal = null;
-    let currentUser = null; // Defined explicitly to prevent reference errors
+    let currentUser = null;
 
     async function initFirebase() {
-      if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+      if (typeof window.db !== 'undefined' && typeof window.auth !== 'undefined') {
         try {
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
-            currentUser = userCredential.user;
-          } else {
-            const userCredential = await signInAnonymously(auth);
-            currentUser = userCredential.user;
-          }
+          const userCredential = await window.signInAnonymously(window.auth);
+          currentUser = userCredential.user;
           setupRealtimeListener();
         } catch (err) {
           console.warn("Auth initialization failed, using local mode:", err);
@@ -445,12 +448,12 @@
 
     // Realtime Listener
     function setupRealtimeListener() {
-      if (typeof db === 'undefined' || !db) return;
+      if (typeof window.db === 'undefined' || !window.db) return;
       
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'current');
+      const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'globalState', 'current');
       
       // Firestore onSnapshot guarantees instant real-time pushes to all open clients
-      onSnapshot(docRef, (docSnap) => {
+      window.onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data && data.state) {
@@ -480,10 +483,10 @@
     window.setGlobalState = async function(newState) {
       const timestamp = new Date().toISOString();
 
-      if (typeof db !== 'undefined' && db && currentUser) {
+      if (typeof window.db !== 'undefined' && window.db && currentUser) {
         try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'current');
-          await setDoc(docRef, {
+          const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'globalState', 'current');
+          await window.setDoc(docRef, {
             state: newState,
             updatedAt: timestamp,
             updatedBy: currentUser.uid
@@ -591,7 +594,9 @@
     });
 
     // Initialize application on page load
-    initFirebase();
+    window.addEventListener('load', () => {
+      initFirebase();
+    });
   </script>
 </body>
 </html>
