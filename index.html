@@ -132,6 +132,12 @@
 
       <!-- Header Status Indicators -->
       <div class="flex items-center gap-4">
+        <!-- SERVER IP CONFIG BUTTON -->
+        <button onclick="toggleConfigModal(true)" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-orbitron text-xs rounded-lg transition-all duration-300">
+          <i class="fa-solid fa-server text-cyan-400"></i>
+          <span id="headerServerIp">bigoilyblackmenvol2.feathermc.gg</span>
+        </button>
+
         <!-- PASSCODE ENTRY FEEDBACK INDICATOR (hidden by default) -->
         <div id="passcodeDisplay" class="hidden flex items-center gap-2 bg-slate-950 border border-cyan-500/50 px-3 py-1.5 rounded-lg text-xs text-cyan-400 font-orbitron">
           <span>CODE:</span>
@@ -171,6 +177,22 @@
           INITIALIZING
         </div>
 
+        <!-- LIVE MINECRAFT METRICS -->
+        <div id="minecraftMetrics" class="hidden flex flex-wrap justify-center gap-4 mt-4 text-xs font-mono text-slate-300">
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-2">
+            <i class="fa-solid fa-users text-cyan-400"></i>
+            <span>PLAYERS: <span id="playerCount" class="font-bold text-white">0/0</span></span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-2">
+            <i class="fa-solid fa-signal text-emerald-400"></i>
+            <span>LATENCY: <span id="pingValue" class="font-bold text-white">-- ms</span></span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-2">
+            <i class="fa-solid fa-cube text-amber-400"></i>
+            <span>VERSION: <span id="serverVersion" class="font-bold text-white">--</span></span>
+          </div>
+        </div>
+
         <!-- Dynamic Subtext Badge -->
         <div id="statusBadge" class="mt-6 px-6 py-2 rounded-full font-orbitron font-bold text-xs md:text-sm uppercase tracking-widest border transition-all duration-500 flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-slate-400"></span>
@@ -183,9 +205,14 @@
 
     <!-- FOOTER -->
     <footer class="border-t border-slate-800/80 pt-4 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-2">
-      <div>GLOBAL NETWORK SYNCHRONIZATION MONITOR</div>
+      <div class="flex items-center gap-3">
+        <span>GLOBAL NETWORK SYNCHRONIZATION MONITOR</span>
+        <button onclick="checkMinecraftStatus()" class="hover:text-cyan-400 transition-colors flex items-center gap-1">
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> Ping Server
+        </button>
+      </div>
       <div class="flex items-center gap-4 font-mono">
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> ENGINE ACTIVE</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> AUTO-PING (60s)</span>
       </div>
     </footer>
 
@@ -193,6 +220,46 @@
 
   <!-- REAL-TIME LIVE TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed top-6 right-6 z-50 pointer-events-none flex flex-col gap-3"></div>
+
+  <!-- MINECRAFT SERVER CONFIG MODAL -->
+  <div id="configModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-opacity duration-300 opacity-0">
+    <div class="relative w-full max-w-md bg-slate-900 border-2 border-cyan-500/60 rounded-2xl p-6 shadow-2xl text-slate-100 font-rajdhani">
+      <button onclick="toggleConfigModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400">
+          <i class="fa-solid fa-cubes text-2xl"></i>
+        </div>
+        <div>
+          <h2 class="font-orbitron font-bold text-lg text-white">MINECRAFT SERVER TARGET</h2>
+          <p class="text-xs text-slate-400">AUTOMATIC PING & STATUS SETUP</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-xs font-orbitron font-semibold text-slate-300 mb-1">SERVER IP / ADDRESS</label>
+          <input type="text" id="serverIpInput" placeholder="e.g. mc.hypixel.net or 192.168.1.50" class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2 text-sm text-cyan-300 font-mono outline-none transition-colors">
+        </div>
+
+        <div>
+          <label class="block text-xs font-orbitron font-semibold text-slate-300 mb-1">SERVER TYPE</label>
+          <select id="serverTypeInput" class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2 text-sm text-cyan-300 font-mono outline-none transition-colors">
+            <option value="java">Java Edition (PC / Default)</option>
+            <option value="bedrock">Bedrock Edition (PE / Windows 10 / Consoles)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="saveServerConfig()" class="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-orbitron font-black text-sm rounded-xl transition-all duration-300 shadow-lg">
+          SAVE & PING NOW
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- SECRET OVERRIDE ADMIN MODAL -->
   <div id="adminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-opacity duration-300 opacity-0">
@@ -370,11 +437,12 @@
     animateParticles();
 
     // UI Updates
-    function updateUI(state, timestamp) {
+    function updateUI(state, timestamp, mcData = null) {
       const mainText = document.getElementById('mainStatusText');
       const statusBox = document.getElementById('statusBox');
       const statusBadge = document.getElementById('statusBadge');
       const lastUpdated = document.getElementById('lastUpdated');
+      const metricsContainer = document.getElementById('minecraftMetrics');
 
       const isOnline = state === 'ONLINE';
 
@@ -401,8 +469,17 @@
         }`;
         statusBadge.innerHTML = `
           <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}"></span>
-          <span>SYSTEM MODE: ${state}</span>
+          <span>MINECRAFT SERVER: ${state}</span>
         `;
+      }
+
+      if (mcData && isOnline && metricsContainer) {
+        metricsContainer.classList.remove('hidden');
+        document.getElementById('playerCount').innerText = `${mcData.players?.online || 0} / ${mcData.players?.max || 0}`;
+        document.getElementById('pingValue').innerText = mcData.debug?.ping ? `${mcData.debug.ping} ms` : 'Active';
+        document.getElementById('serverVersion').innerText = mcData.version || 'Vanilla';
+      } else if (metricsContainer) {
+        metricsContainer.classList.add('hidden');
       }
 
       if (lastUpdated) {
@@ -418,6 +495,87 @@
         }
       }
     }
+
+    // Minecraft Direct Server Ping Logic
+    let currentServerIp = localStorage.getItem('mc_server_ip') || 'bigoilyblackmenvol2.feathermc.gg';
+    let currentServerType = localStorage.getItem('mc_server_type') || 'java';
+
+    document.getElementById('headerServerIp').innerText = currentServerIp;
+    document.getElementById('serverIpInput').value = currentServerIp;
+    document.getElementById('serverTypeInput').value = currentServerType;
+
+    async function checkMinecraftStatus() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+      try {
+        const endpoint = currentServerType === 'bedrock'
+          ? `https://api.mcsrvstat.us/bedrock/3/${encodeURIComponent(currentServerIp)}`
+          : `https://api.mcsrvstat.us/3/${encodeURIComponent(currentServerIp)}`;
+
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        
+        const newState = data.online ? 'ONLINE' : 'OFFLINE';
+        const timestamp = new Date().toISOString();
+
+        if (!isInitialLoad && currentGlobalStateVal !== newState) {
+          showStatusToast(newState);
+        }
+
+        currentGlobalStateVal = newState;
+        isInitialLoad = false;
+
+        updateUI(newState, timestamp, data);
+
+        // Sync with Firestore doc if available
+        if (typeof window.db !== 'undefined' && window.db) {
+          const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'globalState', 'current');
+          window.setDoc(docRef, {
+            state: newState,
+            players: data.players ? `${data.players.online}/${data.players.max}` : '0/0',
+            updatedAt: timestamp,
+            serverIp: currentServerIp
+          }, { merge: true }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Direct query failed, relying on local state:", err);
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+      }
+    }
+
+    // Auto Refresh Status every 60 seconds
+    setInterval(checkMinecraftStatus, 60000);
+
+    window.toggleConfigModal = function(show) {
+      const modal = document.getElementById('configModal');
+      if (!modal) return;
+      if (show) {
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+      } else {
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+      }
+    };
+
+    window.saveServerConfig = function() {
+      const newIp = document.getElementById('serverIpInput').value.trim();
+      const newType = document.getElementById('serverTypeInput').value;
+
+      if (!newIp) return;
+
+      currentServerIp = newIp;
+      currentServerType = newType;
+
+      localStorage.setItem('mc_server_ip', newIp);
+      localStorage.setItem('mc_server_type', newType);
+
+      document.getElementById('headerServerIp').innerText = newIp;
+      toggleConfigModal(false);
+      checkMinecraftStatus();
+    };
 
     // Local State & Fallback Engine
     let localGlobalState = {
@@ -454,7 +612,7 @@
           setupRealtimeListener();
         }
       } else {
-        updateUI(localGlobalState.state, localGlobalState.updatedAt);
+        checkMinecraftStatus();
       }
     }
 
@@ -473,7 +631,6 @@
             if (mappedState === 'YES' || mappedState === 'TRUE' || mappedState === 'ON') mappedState = 'ONLINE';
             if (mappedState === 'NO' || mappedState === 'FALSE' || mappedState === 'OFF') mappedState = 'OFFLINE';
 
-            // Show toast & chime if state changes during an active session
             if (!isInitialLoad && currentGlobalStateVal !== mappedState) {
               showStatusToast(mappedState);
             }
@@ -483,12 +640,11 @@
             updateUI(mappedState, data.updatedAt || null);
           }
         } else {
-          // Initialize document if absent in Firestore
-          setGlobalState('ONLINE');
+          checkMinecraftStatus();
         }
       }, (error) => {
-        console.error("Firestore Listener Error (Check Firebase Console Security Rules):", error);
-        updateUI(localGlobalState.state, localGlobalState.updatedAt);
+        console.error("Firestore Listener Error:", error);
+        checkMinecraftStatus();
       });
     }
 
@@ -534,7 +690,6 @@
       const displayEl = document.getElementById('passcodeDisplay');
       const dotsEl = document.getElementById('passcodeDots');
       
-      // Handle backspace or delete key to reset code
       if (key === 'Backspace' || key === 'Delete' || key === 'Del') {
         passcodeBuffer = "";
         if (displayEl) displayEl.classList.add('hidden');
@@ -542,11 +697,9 @@
         return;
       }
 
-      // Allow numeric keys
       if (/^[0-9]$/.test(key)) {
         passcodeBuffer += key;
 
-        // Visual feedback dots
         if (displayEl) displayEl.classList.remove('hidden');
         if (dotsEl) {
           dotsEl.innerHTML = passcodeBuffer
@@ -557,7 +710,6 @@
 
         playBeep(800 + passcodeBuffer.length * 100, 0.05, 'sine');
 
-        // Clear timer on new keypress
         clearTimeout(passcodeTimeout);
         passcodeTimeout = setTimeout(() => {
           passcodeBuffer = "";
@@ -565,7 +717,6 @@
           if (dotsEl) dotsEl.innerHTML = "";
         }, 3000);
 
-        // Check if passcode matches
         if (passcodeBuffer === SECRET_CODE) {
           playUnlockSound();
           toggleAdminModal(true);
@@ -577,8 +728,7 @@
     }
 
     window.addEventListener('keydown', (e) => {
-      // Don't capture keyboard shortcuts if user is typing in input fields
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
       handlePasscodeKey(e.key);
     });
 
@@ -604,14 +754,16 @@
 
     // Close admin modal on background click
     document.getElementById('adminModal')?.addEventListener('click', (e) => {
-      if (e.target.id === 'adminModal') {
-        toggleAdminModal(false);
-      }
+      if (e.target.id === 'adminModal') toggleAdminModal(false);
+    });
+    document.getElementById('configModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'configModal') toggleConfigModal(false);
     });
 
     // Initialize application on page load
     window.addEventListener('load', () => {
       initFirebase();
+      checkMinecraftStatus();
     });
   </script>
 </body>
