@@ -1,13 +1,242 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Status Monitor</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Google Fonts: Orbitron & Rajdhani for Cyber/Sci-Fi aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind Custom Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif'],
+          },
+          animation: {
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'spin-slow': 'spin 12s linear infinite',
+            'glow-pulse': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            glow: {
+              '0%': { filter: 'drop-shadow(0 0 15px rgba(16, 185, 129, 0.6))' },
+              '100%': { filter: 'drop-shadow(0 0 35px rgba(16, 185, 129, 0.95))' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Scanline effect overlay */
+    .scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 0, 0, 0.3) 50%,
+        rgba(0, 0, 0, 0.3)
+      );
+      background-size: 100% 4px;
+    }
+
+    /* Glow box shadows */
+    .box-glow-yes {
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.35), inset 0 0 15px rgba(16, 185, 129, 0.2);
+    }
+    .box-glow-no {
+      box-shadow: 0 0 30px rgba(244, 63, 94, 0.35), inset 0 0 15px rgba(244, 63, 94, 0.2);
+    }
+    .text-glow-yes {
+      text-shadow: 0 0 20px rgba(16, 185, 129, 0.8), 0 0 40px rgba(16, 185, 129, 0.4);
+    }
+    .text-glow-no {
+      text-shadow: 0 0 20px rgba(244, 63, 94, 0.8), 0 0 40px rgba(244, 63, 94, 0.4);
+    }
+  </style>
+
+  <!-- Firebase SDK Imports -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Setup global variables for window access
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'global-status-app';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+    if (firebaseConfig) {
+      window.app = initializeApp(firebaseConfig);
+      window.db = getFirestore(window.app);
+      window.auth = getAuth(window.app);
+    }
+
+    window.appId = appId;
+    window.signInAnonymously = signInAnonymously;
+    window.signInWithCustomToken = signInWithCustomToken;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.onSnapshot = onSnapshot;
+  </script>
+</head>
+
+<body class="h-full text-slate-100 font-rajdhani overflow-x-hidden selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- BACKGROUND ANIMATED CANVAS -->
+  <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+  <!-- CRT SCANLINE OVERLAY -->
+  <div class="fixed inset-0 pointer-events-none z-10 scanlines opacity-40"></div>
+
+  <!-- MAIN WRAPPER -->
+  <div class="relative z-20 min-h-full flex flex-col justify-between p-4 md:p-8 max-w-7xl mx-auto">
+    
     <!-- TOP BAR: System Header -->
     <header class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-4 bg-slate-900/40 backdrop-blur-md px-6 py-4 rounded-xl border-t border-slate-800/80">
-<!-- ... existing code ... -->
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-cyan-400 shadow-inner">
+          <i class="fa-solid fa-network-wired text-xl animate-pulse"></i>
+        </div>
+        <div>
+          <h1 class="font-orbitron font-extrabold text-lg md:text-xl tracking-wider text-slate-100 uppercase">
+            GLOBAL SIGNAL MONITOR
+          </h1>
+          <p class="text-xs text-slate-400 font-semibold tracking-widest flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            LIVE PERSISTENT NODE // SYNCHRONIZED
+          </p>
+        </div>
+      </div>
+
+      <!-- Header Status Indicators -->
+      <div class="flex items-center gap-4">
+        <!-- PASSCODE ENTRY FEEDBACK INDICATOR (hidden by default) -->
+        <div id="passcodeDisplay" class="hidden flex items-center gap-2 bg-slate-950 border border-cyan-500/50 px-3 py-1.5 rounded-lg text-xs text-cyan-400 font-orbitron">
+          <span>CODE:</span>
+          <div id="passcodeDots" class="flex gap-1"></div>
+        </div>
+
+        <!-- ADMIN PANEL TRIGGER BUTTON (Revealed after code entry) -->
+        <button id="adminPanelBtn" onclick="toggleAdminModal(true)" class="hidden flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-red-600 text-slate-950 font-orbitron text-xs font-black rounded-lg hover:brightness-125 transition-all duration-300 shadow-lg">
+          <i class="fa-solid fa-lock-open"></i> OVERRIDE PANEL
+        </button>
+
+        <div class="text-right">
+          <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">LAST UPDATE</div>
+          <div id="lastUpdated" class="text-xs font-mono text-cyan-400 font-semibold">CONNECTING...</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN DISPLAY AREA -->
+    <main class="my-auto py-12 flex flex-col items-center justify-center text-center">
+      
+      <!-- Status Box Container -->
+      <div id="statusBox" class="relative group w-full max-w-2xl px-6 py-16 md:py-24 rounded-3xl border-2 transition-all duration-700 backdrop-blur-xl bg-slate-900/60 flex flex-col items-center justify-center border-slate-700">
+        
+        <!-- Subtle Corner Accent Elements -->
+        <div class="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-slate-500"></div>
+        <div class="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-slate-500"></div>
+        <div class="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-slate-500"></div>
+        <div class="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-slate-500"></div>
+
+        <div class="text-xs md:text-sm font-orbitron tracking-[0.3em] text-slate-400 uppercase mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-globe animate-spin-slow text-slate-500"></i> SYSTEM STATE
+        </div>
+
+        <!-- MAIN GLOBAL STATUS TEXT (ONLINE / OFFLINE) -->
+        <div id="mainStatusText" class="font-orbitron font-black text-6xl sm:text-8xl md:text-9xl tracking-widest transition-all duration-500 my-2">
+          INITIALIZING
+        </div>
+
+        <!-- Dynamic Subtext Badge -->
+        <div id="statusBadge" class="mt-6 px-6 py-2 rounded-full font-orbitron font-bold text-xs md:text-sm uppercase tracking-widest border transition-all duration-500 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span>CONNECTING TO DATABASE</span>
+        </div>
+
+      </div>
+
+      <!-- Secret passcode hint -->
+      <div class="mt-8 text-xs text-slate-500 font-mono tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-key text-slate-600"></i>
+        <span>Type secret passcode directly on keyboard to access control panel.</span>
+      </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800/80 pt-4 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-2">
+      <div>GLOBAL NETWORK SYNCHRONIZATION MONITOR</div>
+      <div class="flex items-center gap-4 font-mono">
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> ENGINE ACTIVE</span>
+      </div>
+    </footer>
+
+  </div>
+
   <!-- REAL-TIME LIVE TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed top-6 right-6 z-50 pointer-events-none flex flex-col gap-3"></div>
 
   <!-- SECRET OVERRIDE ADMIN MODAL -->
   <div id="adminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-opacity duration-300 opacity-0">
-<!-- ... existing code ... -->
+    <div class="relative w-full max-w-md bg-slate-900 border-2 border-cyan-500/60 rounded-2xl p-6 shadow-2xl text-slate-100 font-rajdhani">
+      
+      <!-- Close Button -->
+      <button onclick="toggleAdminModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400">
+          <i class="fa-solid fa-user-shield text-2xl"></i>
+        </div>
+        <div>
+          <h2 class="font-orbitron font-bold text-lg text-white">OVERRIDE CONTROL</h2>
+          <p class="text-xs text-slate-400">GLOBAL BROADCAST CONTROLLER</p>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-300 mb-6 font-mono">
+        Select state to push globally to all connected clients instantly:
+      </p>
+
+      <!-- YES / NO STATE BUTTONS -->
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <button onclick="setGlobalState('ONLINE')" class="group relative overflow-hidden p-5 rounded-xl border-2 border-emerald-500/50 bg-emerald-950/30 hover:bg-emerald-600 hover:border-emerald-400 text-emerald-400 hover:text-white transition-all duration-300 font-orbitron font-black text-xl shadow-lg flex flex-col items-center justify-center gap-2">
+          <i class="fa-solid fa-bolt text-2xl group-hover:scale-125 transition-transform duration-300"></i>
+          <span>ONLINE</span>
+        </button>
+
+        <button onclick="setGlobalState('OFFLINE')" class="group relative overflow-hidden p-5 rounded-xl border-2 border-rose-500/50 bg-rose-950/30 hover:bg-rose-600 hover:border-rose-400 text-rose-400 hover:text-white transition-all duration-300 font-orbitron font-black text-xl shadow-lg flex flex-col items-center justify-center gap-2">
+          <i class="fa-solid fa-power-off text-2xl group-hover:scale-125 transition-transform duration-300"></i>
+          <span>OFFLINE</span>
+        </button>
+      </div>
+
+      <div class="text-center">
+        <button onclick="toggleAdminModal(false)" class="text-xs text-slate-500 hover:text-slate-300 uppercase tracking-widest font-orbitron">
+          [ CANCEL & DISMISS ]
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Canvas Engine & UI Logic -->
   <script>
     // Audio FX using Web Audio API (Synthesized Cyber Sounds)
@@ -82,7 +311,104 @@
     }
 
     function playUnlockSound() {
-<!-- ... existing code ... -->
+      playBeep(440, 0.06, 'sine');
+      setTimeout(() => playBeep(880, 0.1, 'triangle'), 70);
+    }
+
+    // Canvas Background Particles Engine
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = (Math.random() - 0.5) * 0.4;
+        this.speedY = (Math.random() - 0.5) * 0.4;
+        this.alpha = Math.random() * 0.5 + 0.1;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+          this.reset();
+        }
+      }
+      draw() {
+        ctx.fillStyle = `rgba(56, 189, 248, ${this.alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < 60; i++) particles.push(new Particle());
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // UI Updates
+    function updateUI(state, timestamp) {
+      const mainText = document.getElementById('mainStatusText');
+      const statusBox = document.getElementById('statusBox');
+      const statusBadge = document.getElementById('statusBadge');
+      const lastUpdated = document.getElementById('lastUpdated');
+
+      const isOnline = state === 'ONLINE';
+
+      if (mainText) {
+        mainText.innerText = state;
+        mainText.className = `font-orbitron font-black text-6xl sm:text-8xl md:text-9xl tracking-widest transition-all duration-500 my-2 ${
+          isOnline ? 'text-emerald-400 text-glow-yes' : 'text-rose-500 text-glow-no'
+        }`;
+      }
+
+      if (statusBox) {
+        statusBox.className = `relative group w-full max-w-2xl px-6 py-16 md:py-24 rounded-3xl border-2 transition-all duration-700 backdrop-blur-xl bg-slate-900/60 flex flex-col items-center justify-center ${
+          isOnline 
+            ? 'border-emerald-500/80 box-glow-yes' 
+            : 'border-rose-500/80 box-glow-no'
+        }`;
+      }
+
+      if (statusBadge) {
+        statusBadge.className = `mt-6 px-6 py-2 rounded-full font-orbitron font-bold text-xs md:text-sm uppercase tracking-widest border transition-all duration-500 flex items-center gap-2 ${
+          isOnline
+            ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
+            : 'bg-rose-950/80 border-rose-500/60 text-rose-300'
+        }`;
+        statusBadge.innerHTML = `
+          <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-rose-500 animate-pulse'}"></span>
+          <span>SYSTEM SIGNAL STATUS: ${state}</span>
+        `;
+      }
+
+      if (lastUpdated && timestamp) {
+        const date = new Date(timestamp);
+        lastUpdated.innerText = date.toLocaleTimeString();
+      }
+    }
+
     // Local State Fallback (if offline or database error)
     let localGlobalState = {
       state: 'ONLINE',
@@ -91,12 +417,31 @@
 
     let isInitialLoad = true;
     let currentGlobalStateVal = null;
+    let currentUser = null; // Defined explicitly to prevent reference errors
 
     async function initFirebase() {
-<!-- ... existing code ... -->
+      if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+        try {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+            currentUser = userCredential.user;
+          } else {
+            const userCredential = await signInAnonymously(auth);
+            currentUser = userCredential.user;
+          }
+          setupRealtimeListener();
+        } catch (err) {
+          console.warn("Auth initialization failed, using local mode:", err);
+          updateUI(localGlobalState.state, localGlobalState.updatedAt);
+        }
+      } else {
+        updateUI(localGlobalState.state, localGlobalState.updatedAt);
+      }
+    }
+
     // Realtime Listener
     function setupRealtimeListener() {
-      if (!db) return;
+      if (typeof db === 'undefined' || !db) return;
       
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'current');
       
@@ -109,7 +454,7 @@
             if (mappedState === 'YES') mappedState = 'ONLINE';
             if (mappedState === 'NO') mappedState = 'OFFLINE';
 
-            // Show toast & chime if state changes during a active session
+            // Show toast & chime if state changes during an active session
             if (!isInitialLoad && currentGlobalStateVal !== mappedState) {
               showStatusToast(mappedState);
             }
@@ -131,7 +476,7 @@
     window.setGlobalState = async function(newState) {
       const timestamp = new Date().toISOString();
 
-      if (db && currentUser) {
+      if (typeof db !== 'undefined' && db && currentUser) {
         try {
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'current');
           await setDoc(docRef, {
