@@ -403,16 +403,20 @@
         `;
       }
 
-      if (lastUpdated && timestamp) {
-        const date = new Date(timestamp);
-        lastUpdated.innerText = date.toLocaleTimeString();
+      if (lastUpdated) {
+        if (timestamp) {
+          const date = new Date(timestamp);
+          lastUpdated.innerText = date.toLocaleTimeString();
+        } else {
+          lastUpdated.innerText = 'NEVER';
+        }
       }
     }
 
     // Local State Fallback (if offline or database error)
     let localGlobalState = {
       state: 'ONLINE',
-      updatedAt: new Date().toISOString()
+      updatedAt: null
     };
 
     let isInitialLoad = true;
